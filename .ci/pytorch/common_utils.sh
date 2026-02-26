@@ -281,10 +281,8 @@ function install_torchrec_and_fbgemm() {
     install_fbgemm "rocm"
   else
     pip_build_and_install "git+https://github.com/pytorch/torchrec.git@${torchrec_commit}" dist/torchrec
-    # Skip fbgemm for CUDA 13 as it's not compatible yet
-    if [[ "$BUILD_ENVIRONMENT" != *cuda13* ]]; then
-      install_fbgemm "cuda"
-    fi
+    # FBGEMM v1.5+ supports CUDA 13
+    install_fbgemm "cuda"
   fi
 }
 
