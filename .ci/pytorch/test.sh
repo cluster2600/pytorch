@@ -173,6 +173,14 @@ if [[ "$BUILD_ENVIRONMENT" == *slow-gradcheck* ]]; then
   export PYTORCH_TEST_CUDA_MEM_LEAK_CHECK=1
 fi
 
+if [[ "$BUILD_ENVIRONMENT" == *cuda13* ]]; then
+  # CUDA 13.1 runtime optimizations for Blackwell
+  # Lazy module loading reduces startup time for large CUDA apps
+  export CUDA_MODULE_LOADING=LAZY
+  # Expandable segments reduce memory fragmentation on high-VRAM GPUs
+  export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+fi
+
 if [[ "$BUILD_ENVIRONMENT" == *cuda* || "$BUILD_ENVIRONMENT" == *rocm* ]]; then
   # Used so that only cuda/rocm specific versions of tests are generated
   # mainly used so that we're not spending extra cycles testing cpu
@@ -903,11 +911,7 @@ test_dynamo_benchmark() {
   local shard_id="$1"
   shift
 
-  # Exclude torchrec_dlrm for CUDA 13 as FBGEMM is not compatible
   local extra_args=()
-  if [[ "$BUILD_ENVIRONMENT" == *cuda13* ]]; then
-    extra_args=(--exclude-exact torchrec_dlrm)
-  fi
 
   if [[ "${TEST_CONFIG}" == *perf_compare* ]]; then
     test_single_dynamo_benchmark "training" "$suite" "$shard_id" --training --amp "${extra_args[@]}" "$@"
@@ -1956,8 +1960,8 @@ elif [[ "${TEST_CONFIG}" == *torchbench* ]]; then
   else
     # Do this after checkout_install_torchbench to ensure we clobber any
     # nightlies that torchbench may pull in
-    # Skip torchrec/fbgemm for cuda13 as they're not compatible yet
-    if [[ "${TEST_CONFIG}" != *cpu* && "${TEST_CONFIG}" != *xpu* && "${BUILD_ENVIRONMENT}" != *cuda13* ]]; then
+    # Install torchrec/fbgemm for CUDA builds (FBGEMM v1.5+ supports CUDA 13)
+    if [[ "${TEST_CONFIG}" != *cpu* && "${TEST_CONFIG}" != *xpu* ]]; then
       install_torchrec_and_fbgemm
       # TODO (huydhn): Newer FBGEMM has a bug in detecting libtbb when building from source
       LIBTBB_PATH="$(find "$(dirname "$(which python)")/../lib/" -name libtbb.so.12)"

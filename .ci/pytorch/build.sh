@@ -31,8 +31,34 @@ if [[ "$BUILD_ENVIRONMENT" == *cuda* ]]; then
 fi
 
 if [[ "$BUILD_ENVIRONMENT" == *cuda13* ]]; then
-  # Disable FBGEMM for CUDA 13 builds
-  export USE_FBGEMM=0
+  # FBGEMM v1.5+ supports CUDA 13
+  export USE_FBGEMM=1
+
+  # Enable CUDA 13.1 specific optimizations
+  export USE_TENSOREXPR=1
+  export USE_CUDNN=1
+  export USE_NCCL=1
+
+  # Blackwell (sm_120) support
+  if [[ -z "$TORCH_CUDA_ARCH_LIST" ]]; then
+    export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0;10.0;12.0"
+  fi
+
+  # Enable Blackwell-specific optimizations
+  export USE_CUDNN_FRONTEND=1
+  export USE_FLASH_ATTENTION=1
+  export USE_MEM_EFF_ATTENTION=1
+
+  # MSLK quantized GEMM kernels (MXFP8 grouped GEMM on SM100+)
+  export USE_MSLK=1
+
+  # Enable TensorFloat-32 and FP8
+  export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
+  export CUDNN_ALLOW_TF32_CUBLAS_OVERRIDE=1
+
+  # NCCL optimizations for multi-GPU
+  export NCCL_IB_DISABLE=0
+  export NCCL_NET_GDR_LEVEL=2
 fi
 
 if [[ ${BUILD_ENVIRONMENT} == *"parallelnative"* ]]; then
